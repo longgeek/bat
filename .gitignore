@@ -14,3 +14,4 @@ reports/
 .venv
 db.sqlite3
 #*migrations*
+build/

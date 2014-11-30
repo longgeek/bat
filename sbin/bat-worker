@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Author: Longgeek <longgeek@gmail.com>
+
+import pika
+import simplejson
+
+from bat.lib.main import msg_main
+from bat.lib.sing_leton import RabbitSingLeton
+
+class Call(object):
+    """消费消息，反馈消息"""
+
+    def __init__(self):
+        """消费消息"""
+        sing_leton = RabbitSingLeton()
+        self.channel = sing_leton[0]
+        self.connection = sing_leton[1]
+
+        # 定义持久化队列
+        self.def_queue = self.channel.queue_declare(queue='docker_task',
+                                                    durable=True)
+        # 多个 worker 需要公平调度
+        self.channel.basic_qos(prefetch_count=1)
+
+        # 消费消息
+        self.channel.basic_consume(self.request,
+                                   queue=self.def_queue.method.queue)
+        self.channel.start_consuming()
+
+    def consume_msg(self, msg):
+        """处理消息"""
+        return msg_main(msg)
+
+    def request(self, channel, method, props, body):
+        """反馈消息"""
+        response = simplejson.dumps(self.consume_msg(body))
+
+        channel.basic_publish(exchange='',
+                              routing_key=props.reply_to,
+                              properties=pika.BasicProperties(
+                                  correlation_id=props.correlation_id,
+                                  reply_to=props.reply_to),
+                              body=response)
+        channel.basic_ack(delivery_tag=method.delivery_tag)
+
+if __name__ == "__main__":
+    call = Call()
