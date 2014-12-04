@@ -106,13 +106,35 @@ class Container_Manager(object):
         except Exception, e:
             return (1, e, '')
 
-    def stop_container(self, msg):
+    def stop_container(self, msg, timeout=5):
         """停止 Container"""
-        pass
+        try:
+            c_id = msg['cid']
+            self.connection.stop(c_id, timeout)
 
-    def restart_container(self, msg):
+            # 调用 _containers, 拿到 status
+            containers = self._containers(c_id)
+            if containers[0] == 0:
+                msg['status'] = containers[2]['Status']
+            return (0, '', msg)
+
+        except Exception, e:
+            return (1, e, '')
+
+    def restart_container(self, msg, timeout=5):
         """重启 Container"""
-        pass
+        try:
+            c_id = msg['cid']
+            self.connection.restart(c_id, timeout)
+
+            # 调用 _containers, 拿到 status
+            containers = self._containers(c_id)
+            if containers[0] == 0:
+                msg['status'] = containers[2]['Status']
+            return (0, '', msg)
+
+        except Exception, e:
+            return (1, e, '')
 
     def delete_container(self, msg):
         """删除 Container"""

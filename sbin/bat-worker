@@ -8,6 +8,7 @@ import simplejson
 from bat.lib.main import msg_main
 from bat.lib.sing_leton import RabbitSingLeton
 
+
 class Call(object):
     """消费消息，反馈消息"""
 
