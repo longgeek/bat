@@ -13,7 +13,7 @@ def msg_main(msg):
     if 'container' in msg['message_type']:
         return containers.main(msg)
 
-    elif 'images' in msg['message_type']:
+    elif 'image' in msg['message_type']:
         return images.main(msg)
 
     elif 'monitor' in msg['message_type']:

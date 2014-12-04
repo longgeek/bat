@@ -30,8 +30,8 @@ class Container_Manager(object):
             else:
                 return (0, '', all_containers)
 
-        except Exception, msgs:
-            return (1, msgs, '')
+        except Exception, e:
+            return (1, e, '')
 
     def _inspect_container(self, cid):
         """获取一个 Container 的信息
@@ -42,8 +42,8 @@ class Container_Manager(object):
         try:
             container = self.connection.inspect_container(cid)
             return (0, '', container)
-        except Exception, msgs:
-            return (1, msgs, '')
+        except Exception, e:
+            return (1, e, '')
 
     def create_container(self, msg):
         """创建 Container"""
@@ -88,8 +88,8 @@ class Container_Manager(object):
             else:
                 return start_c
 
-        except Exception, msgs:
-            return (1, msgs, '')
+        except Exception, e:
+            return (1, e, '')
 
     def start_container(self, msg, c_id=None):
         """启动 Container"""
@@ -103,11 +103,28 @@ class Container_Manager(object):
             self.connection.start(container=container_id)
             return (0, '', msg)
 
-        except Exception, msgs:
-            return (1, msgs, '')
+        except Exception, e:
+            return (1, e, '')
 
     def stop_container(self, msg):
+        """停止 Container"""
+        pass
+
+    def restart_container(self, msg):
+        """重启 Container"""
+        pass
+
+    def delete_container(self, msg):
         """删除 Container"""
+        try:
+            self.connection.remove_container(container=msg['cid'],
+                                             force=True)
+            return (0, '', msg)
+        except Exception, e:
+            return (1, e, '')
+
+    def exec_container(self, msg):
+        """增加进程 Container"""
         pass
 
 
