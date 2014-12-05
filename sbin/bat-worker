@@ -35,7 +35,15 @@ class Call(object):
 
     def request(self, channel, method, props, body):
         """反馈消息"""
+        print '-----------------------------------'
+        print 'Receive:'
+        print body
+        print '-----------------------------------'
         response = simplejson.dumps(self.consume_msg(body))
+        print '#########################################'
+        print 'Send:'
+        print response
+        print '#########################################'
 
         channel.basic_publish(exchange='',
                               routing_key=props.reply_to,
