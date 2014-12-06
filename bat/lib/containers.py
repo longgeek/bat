@@ -201,6 +201,18 @@ class Container_Manager(object):
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
 
+    def top_container(self, msg):
+        """列出容器中的进程"""
+        try:
+            c_id = msg['cid']
+            top_result = self.connection.top(c_id)
+            msg['titles'] = top_result['Titles']
+            msg['processes'] = top_result['Processes']
+            return (0, '', msg)
+
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
 
 def main(msg):
     """Containers 程序入口,
