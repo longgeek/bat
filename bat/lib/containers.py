@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # Author: Longgeek <longgeek@gmail.com>
 
+import re
 import simplejson
 
 from bat.lib.sing_leton import DockerSingLeton
@@ -12,6 +13,7 @@ class Container_Manager(object):
 
     def __init__(self):
         self.connection = DockerSingLeton()
+        self.range_ports = xrange(4301, 4500)
 
     def _containers(self, db_id, cid=None):
         """获取所有 Container 的信息
@@ -158,19 +160,6 @@ class Container_Manager(object):
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
 
-    def exec_container(self, msg):
-        """增加进程 Container"""
-        try:
-            c_id = msg['cid']
-            c_list = simplejson.loads(msg['command'])
-            for c in c_list:
-                self.connection.execute(container=c_id, cmd=c,
-                                        detach=True, tty=True,
-                                        stderr=False, stdout=False)
-            return (0, '', msg)
-        except Exception, e:
-            return (1, {'error': str(e), 'id': msg['id']}, '')
-
     def pause_container(self, msg):
         """暂停容器"""
         try:
@@ -201,6 +190,43 @@ class Container_Manager(object):
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
 
+    def exec_container(self, msg, console=False):
+        """增加进程 Container"""
+        try:
+            c_id = msg['cid']
+            if not console:
+                c_list = simplejson.loads(msg['command'])
+            else:
+                c_list = msg['console_command']
+
+            if c_list:
+                for c in c_list:
+                    self.connection.execute(container=c_id, cmd=c,
+                                            detach=True, tty=True,
+                                            stderr=False, stdout=False)
+            # 检查进程是否成功启动
+            if console:
+                # 调用 _get_console_process 获取容器所有的 console 进程
+                s, m, r = self._get_console_process(msg)
+                if s == 0:
+                    # 调用 _get_console_port 获取容器所有的 console 端口
+                    process_info = self._get_console_port(msg['id'],
+                                                          c_id,
+                                                          msg['host'],
+                                                          r)
+                    if process_info[0] == 0:
+                        process_info[2].pop('use_ports')
+                        process_info[2].pop('free_ports')
+                    return (0, '', process_info[2])
+
+                else:
+                    return(s, m, r)
+            else:
+                return (0, '', msg)
+
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
     def top_container(self, msg):
         """列出容器中的进程"""
         try:
@@ -210,6 +236,115 @@ class Container_Manager(object):
             msg['processes'] = top_result['Processes']
             return (0, '', msg)
 
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
+    def _get_console_process(self, msg):
+        """获取所有 console 进程"""
+
+        try:
+            # 拿出容器所有的进程
+            s, m, r = self.top_container(msg)
+            if s == 0:
+                processes = r['processes']
+                processes_list = []
+                # 从所有进程中过滤出包含 'nsenter-exec' 关键字的进程
+                # 保存结果到 processes_list 中
+                for p in xrange(len(processes)):
+                    process = processes[p][-1]
+                    if 'nsenter-exec' in process:
+                        process = process.split(' -- ', 1)[1]
+                        processes_list.append(process)
+                # 返回过滤的进程
+                return (0, '', processes_list)
+            else:
+                return (s, m, r)
+
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
+    def _get_port(self, db_id, c_id, private_port):
+        """获取容器端口所映射的端口 """
+        try:
+            r = self.connection.port(c_id, private_port)
+            return (0, '', r[0]['HostPort'])
+        except Exception, e:
+            return (1, {'error': str(e), 'id': db_id}, '')
+
+    def _get_console_port(self, db_id, c_id, host, processes):
+        """获取所有 console 的端口和映射端口"""
+
+        # 定义 return 数据
+        result = {'id': db_id,
+                  'cid': c_id,
+                  'host': host,
+                  'console': {},
+                  'use_ports': [],
+                  'free_ports': []}
+
+        if not processes:
+            result['free_ports'] = self.range_ports
+            return (0, '', result)
+
+        # 过滤进程中指定的端口号，保存到 use_ports 列表中
+        use_ports = []
+        for process in processes:
+            port_group = re.search(r'-p (\d+) -t', process)
+            if port_group:
+                port = int(port_group.group(1))
+                use_ports.append(port)
+
+            # 获取具体的命令, e.g. 'vim /opt/scripts.py'
+            command = process.split('/:root:root:/root:')[-1]
+
+            # 获取映射端口
+            s, m, r = self._get_port(db_id, c_id, port)
+            if s == 0:
+                result['console'][command] = {'public_port': int(r),
+                                              'private_port': port}
+            else:
+                return (s, m, r)
+
+        # 算出空闲的端口, 保存, return 数据
+        free_ports = set(self.range_ports) - set(sorted(use_ports))
+        free_ports = list(free_ports)
+        result['use_ports'] = use_ports
+        result['free_ports'] = free_ports
+        return (0, '', result)
+
+    def console_container(self, msg):
+        """为容器添加相应 Console"""
+        try:
+            db_id = msg['id']
+            c_id = msg['cid']
+            base_command = "shellinaboxd -v -p %d -t -s '/:root:root:/root:%s'"
+
+            # 调用 _get_console_process 获取容器所有的 console 进程
+            status, message, result = self._get_console_process(msg)
+            if status == 0:
+                # 调用 _get_console_port 获取容器所有的 console 端口
+                s, m, r = self._get_console_port(db_id,
+                                                 c_id,
+                                                 msg['host'],
+                                                 result)
+                if s == 0:
+                    exist_command = r['console'].keys()
+                    exec_command = simplejson.loads(msg['command'])
+                    free_ports = r['free_ports']
+                    will_command = []
+                    for i in xrange(len(exec_command)):
+                        if exec_command[i] not in exist_command:
+                            command = base_command % (free_ports[i],
+                                                      exec_command[i])
+                            will_command.append(command)
+
+                    msg['console_command'] = will_command
+                    exec_result = self.exec_container(msg, console=True)
+                    return exec_result
+                else:
+                    return (s, m, r)
+            else:
+                return (status, message, result)
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
 
