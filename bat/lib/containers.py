@@ -282,7 +282,8 @@ class Container_Manager(object):
                   'console': {},
                   'use_ports': [],
                   'free_ports': [],
-                  'username': username}
+                  'username': username,
+                  'message_type': 'console_container'}
 
         if not processes:
             result['free_ports'] = self.range_ports
