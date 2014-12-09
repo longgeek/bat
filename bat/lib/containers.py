@@ -213,6 +213,7 @@ class Container_Manager(object):
                     process_info = self._get_console_port(msg['id'],
                                                           c_id,
                                                           msg['host'],
+                                                          msg['username'],
                                                           r)
                     if process_info[0] == 0:
                         process_info[2].pop('use_ports')
@@ -271,7 +272,7 @@ class Container_Manager(object):
         except Exception, e:
             return (1, {'error': str(e), 'id': db_id}, '')
 
-    def _get_console_port(self, db_id, c_id, host, processes):
+    def _get_console_port(self, db_id, c_id, host, username, processes):
         """获取所有 console 的端口和映射端口"""
 
         # 定义 return 数据
@@ -280,7 +281,8 @@ class Container_Manager(object):
                   'host': host,
                   'console': {},
                   'use_ports': [],
-                  'free_ports': []}
+                  'free_ports': [],
+                  'username': username}
 
         if not processes:
             result['free_ports'] = self.range_ports
@@ -326,6 +328,7 @@ class Container_Manager(object):
                 s, m, r = self._get_console_port(db_id,
                                                  c_id,
                                                  msg['host'],
+                                                 msg['username'],
                                                  result)
                 if s == 0:
                     exist_command = r['console'].keys()
