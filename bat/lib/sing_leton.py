@@ -7,7 +7,8 @@ import pika
 from bat import cfg
 from docker import Client
 
-get_url = cfg.get_rabbit_url(url=False)
+bat_conf = cfg.BatConfig()
+get_url = bat_conf.get_rabbit_url(url=False)
 if get_url[0] == 0:
     RABBITMQ_URLS = get_url[2]
 
