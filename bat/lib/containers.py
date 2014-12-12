@@ -13,22 +13,27 @@ class Container_Manager(object):
 
     def __init__(self):
         self.connection = DockerSingLeton()
-        self.range_ports = xrange(4301, 4500)
+        self.range_ports = xrange(4301, 4319)
 
     def _containers(self, db_id, cid=None):
-        """获取所有 Container 的信息
+        """获取所有 Container 的信息, 或一个容器
         # docker ps -a
         # docker ps -a | grep $cid
 
         """
         try:
-            all_containers = self.connection.containers(
-                all=True, size=True)
+            # 获取一个容器的信息
             if cid:
-                for c in xrange(len(all_containers)):
-                    if all_containers[c]['Id'] == cid:
-                        return (0, '', all_containers[c])
+                container = self.connection.containers(all=True,
+                                                       size=True,
+                                                       filters={'id': cid})
+                if len(container) == 1:
+                    container = container[0]
+                return (0, '', container)
+            # 获取所有容器的信息
             else:
+                all_containers = self.connection.containers(all=True,
+                                                            size=True)
                 return (0, '', all_containers)
 
         except Exception, e:
