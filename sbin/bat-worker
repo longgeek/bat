@@ -3,8 +3,10 @@
 # Author: Longgeek <longgeek@gmail.com>
 
 import pika
+import logging
 import simplejson
 
+from bat import cfg
 from bat.lib.main import msg_main
 from bat.lib.sing_leton import RabbitSingLeton
 
@@ -35,15 +37,15 @@ class Call(object):
 
     def request(self, channel, method, props, body):
         """反馈消息"""
-        print '-----------------------------------'
-        print 'Receive:'
-        print body
-        print '-----------------------------------'
+        logging.info('##########################')
+        logging.info('###  RECEIVE MESSAGE:  ###')
+        logging.info('##########################')
+        logging.info(body)
         response = simplejson.dumps(self.consume_msg(body))
-        print '#########################################'
-        print 'Send:'
-        print response
-        print '#########################################'
+        logging.info('#######################')
+        logging.info('###  SEND MESSAGE:  ###')
+        logging.info('#######################')
+        logging.info(response)
 
         channel.basic_publish(exchange='',
                               routing_key=props.reply_to,
@@ -54,4 +56,13 @@ class Call(object):
         channel.basic_ack(delivery_tag=method.delivery_tag)
 
 if __name__ == "__main__":
-    call = Call()
+    CFG = cfg.BatConfig()
+    Log = CFG.get_log()
+    if Log[0] == 0:
+        logging.info('\n\n')
+        logging.info('######################')
+        logging.info('###  START BAT...  ###')
+        logging.info('######################\n')
+        call = Call()
+    else:
+        print Log[1]

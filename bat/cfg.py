@@ -6,6 +6,7 @@ import os
 import fcntl
 import socket
 import struct
+import logging
 import ConfigParser
 
 
@@ -15,12 +16,12 @@ class BatConfig(object):
     def __init__(self):
         """初始化读取配置文件"""
 
-        self.status, self.msgs, self.results = self._get_file()
+        self.status, self.msgs, self.results = self._get_conf_file()
         if self.status == 0:
             self.cf = ConfigParser.ConfigParser()
             self.cf.read(self.results)
 
-    def _get_file(self):
+    def _get_conf_file(self):
         """判断文件是否存在"""
 
         bat_conf = '/etc/bat/bat.conf'
@@ -71,5 +72,47 @@ class BatConfig(object):
                                                           interface[:15])
                                               )[20:24])
             return (0, '', ip)
+        except Exception, e:
+            return (1, str(e), '')
+
+    def get_log(self):
+        """获取日志配置"""
+        if self.status != 0:
+            return (self.status, self.msgs, self.results)
+
+        try:
+            log_dir = self.cf.get('log', 'log_dir')
+            log_file = self.cf.get('log', 'log_file')
+            filename = os.path.join(log_dir, log_file)
+            if os.path.exists(log_dir):
+                if not os.path.exists(filename):
+                    os.mknod(filename)
+                try:
+                    debug = self.cf.get('log', 'debug')
+                except:
+                    debug = 'false'
+                try:
+                    verbose = self.cf.get('log', 'verbose')
+                except:
+                    verbose = 'false'
+
+                if (debug == 'true' or debug == 'True') and \
+                   (verbose == 'false' or verbose == 'false'):
+                    level = logging.DEBUG
+                elif (debug == 'false' or debug == 'False') and \
+                     (verbose == 'false' or verbose == 'False'):
+                    level = logging.WARNING
+                else:
+                    level = logging.DEBUG
+
+                format = '%(asctime)s %(levelname)s %(message)s'
+                return (0, '', logging.basicConfig(filename=filename,
+                                                   level=level,
+                                                   format=format))
+            else:
+                return (-1,
+                        "\nError:\n%s: No such file or directory\n" % filename,
+                        '')
+
         except Exception, e:
             return (1, str(e), '')
