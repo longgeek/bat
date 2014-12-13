@@ -48,10 +48,17 @@ Dependent on the installation of the bat:
     git clone git@git.pyindex.com:reviewdev/bat.git
     cd bat/
     pip install -r requirements.txt
+    python setup.py install (Develop mode: python setup.py develop)
 
 The configuration file:
     cd bat/
     cp -r etc/* /etc/
+    cp sbin/bat-worker /usr/sbin/
+    mkdir /var/log/bat
+    chown :adm /var/log/bat
+    touch /var/log/bat/bat.log
+    logrotate -f /etc/logrotate.d/bat-worker
+    service rsyslog restart
 
 Modify the configuration file:
     vim /etc/bat/bat.conf
@@ -61,4 +68,7 @@ Modify the configuration file:
     ....
 
 Run it:
-    python bat/sbin/bat-worker
+    service bat-worker restart
+
+Log:
+    tail -f /var/log/bat/bat.log

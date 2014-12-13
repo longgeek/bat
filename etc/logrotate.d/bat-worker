@@ -1,0 +1,10 @@
+/var/log/bat/bat-worker.log {
+    daily
+    rotate 30
+    missingok
+    compress
+    minsize 100k
+    dateext
+    copytruncate
+    notifempty
+}
