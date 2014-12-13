@@ -21,7 +21,7 @@ class Call(object):
         self.connection = sing_leton[1]
 
         # 定义持久化队列
-        self.def_queue = self.channel.queue_declare(queue='docker_task',
+        self.def_queue = self.channel.queue_declare(queue=IP[2],
                                                     durable=True)
         # 多个 worker 需要公平调度
         self.channel.basic_qos(prefetch_count=1)
@@ -58,7 +58,8 @@ class Call(object):
 if __name__ == "__main__":
     CFG = cfg.BatConfig()
     Log = CFG.get_log()
-    if Log[0] == 0:
+    IP = CFG.get_ip()
+    if Log[0] == 0 and IP[0] == 0:
         logging.info('\n\n')
         logging.info('######################')
         logging.info('###  START BAT...  ###')
