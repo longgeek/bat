@@ -56,7 +56,7 @@ The configuration file:
     cp sbin/bat-worker /usr/sbin/
     mkdir /var/log/bat
     chown :adm /var/log/bat
-    touch /var/log/bat/bat.log
+    touch /var/log/bat/bat-worker.log
     logrotate -f /etc/logrotate.d/bat-worker
     service rsyslog restart
 
