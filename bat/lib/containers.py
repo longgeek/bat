@@ -55,11 +55,14 @@ class Container_Manager(object):
         """创建 Container"""
 
         try:
+            command = msg['']
+            if not command:
+                command = '/bin/bash'
             c_id = self.connection.create_container(
                 name=msg['name'],
                 image=msg['image_name'],
                 ports=msg['ports'],
-                command=msg['command'],
+                command=command,
                 tty=True,
                 detach=True,
                 stdin_open=True,
