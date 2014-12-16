@@ -3,6 +3,7 @@
 # Author: Longgeek <longgeek@gmail.com>
 
 import re
+import os
 import simplejson
 
 from bat.lib.sing_leton import DockerSingLeton
@@ -14,6 +15,7 @@ class Container_Manager(object):
     def __init__(self):
         self.connection = DockerSingLeton()
         self.range_ports = xrange(4301, 4319)
+        self.container_path = '/var/lib/docker/aufs/diff'
 
     def _containers(self, db_id, cid=None):
         """获取所有 Container 的信息, 或一个容器
@@ -55,7 +57,7 @@ class Container_Manager(object):
         """创建 Container"""
 
         try:
-            command = msg['']
+            command = msg['command']
             if not command:
                 command = '/bin/bash'
             c_id = self.connection.create_container(
@@ -359,6 +361,85 @@ class Container_Manager(object):
                 return (status, message, result)
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
+
+    def files_write_container(self, msg):
+        """为容器中的文件写入数据"""
+
+        try:
+            c_id = msg['cid']
+            files = msg['files']
+
+            # Docker 容器在 Host 上的路径
+            host_dir_path = os.path.join(self.container_path, c_id)
+
+            # 遍历所有的文件
+            for file in files:
+                # 容器中的文件路径
+                container_file_path = os.path.dirname(file)
+                # 容器中的文件名字
+                container_file_name = os.path.basename(file)
+                # 文件所在 Host 上目录的完全路径
+                full_path = host_dir_path + container_file_path
+                # 文件所在 Host 上的完全路径
+                full_file_path = os.path.join(full_path, container_file_name)
+
+                # 如果 full_path 不存在, 就创建
+                if not os.path.exists(full_path):
+                    os.makedirs(full_path)
+
+                # 写入数据到文件中
+                fo = open(full_file_path, 'w')
+                fo.writelines(files[file].encode('utf-8'))
+                fo.close()
+            return (0, '', msg)
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
+    def files_read_container(self, msg):
+        """读取容器中文件的内容"""
+
+        try:
+            c_id = msg['cid']
+            files = msg['files']
+
+            # Docker 容器在 Host 上的路径
+            host_dir_path = os.path.join(self.container_path, c_id)
+
+            files_content = {}
+            # 遍历所有的文件
+            for file in files:
+                # 容器中的文件路径
+                container_file_path = os.path.dirname(file)
+                # 容器中的文件名字
+                container_file_name = os.path.basename(file)
+                # 文件所在 Host 上目录的完全路径
+                full_path = host_dir_path + container_file_path
+                # 文件所在 Host 上的完全路径
+                full_file_path = os.path.join(full_path, container_file_name)
+
+                # 如果 full_path 不存在, 就创建
+                if not os.path.exists(full_path):
+                    os.makedirs(full_path)
+                # 如果文件不存在, 创建一个空文件
+                if not os.path.exists(full_file_path):
+                    os.mknod(full_file_path, 0644)
+
+                s, m, r = self._exec_file_content(msg['id'], c_id, file)
+                files_content[file] = r
+            msg['files'] = files_content
+            return (0, '', msg)
+
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
+    def _exec_file_content(self, db_id, c_id, filename):
+        """通过 Docker execute api 获取容器中文件内容"""
+
+        try:
+            content = self.connection.execute(c_id, 'cat %s' % filename)
+            return (0, '', content)
+        except Exception, e:
+            return (1, {'error': str(e), 'id': id}, '')
 
 
 def main(msg):
