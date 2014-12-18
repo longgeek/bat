@@ -302,13 +302,13 @@ class Container_Manager(object):
         # 过滤进程中指定的端口号，保存到 use_ports 列表中
         use_ports = []
         for process in processes:
-            port_group = re.search(r'-p (\d+) -t', process)
+            port_group = re.search(r'--port=(\d+) --login', process)
             if port_group:
                 port = int(port_group.group(1))
                 use_ports.append(port)
 
             # 获取具体的命令, e.g. 'vim /opt/scripts.py'
-            command = process.split('/:root:root:/root:')[-1]
+            command = process.split('--login=False --cmd=')[-1]
 
             # 获取映射端口
             s, m, r = self._get_port(db_id, c_id, port)
@@ -330,7 +330,8 @@ class Container_Manager(object):
         try:
             db_id = msg['id']
             c_id = msg['cid']
-            base_command = "shellinaboxd -v -p %d -t -s '/:root:root:/root:%s'"
+            base_command = "butterfly.server.py --unsecure \
+--host=0.0.0.0 --port=%s --login=False --cmd='%s'"
 
             # 调用 _get_console_process 获取容器所有的 console 进程
             status, message, result = self._get_console_process(msg)
