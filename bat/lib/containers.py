@@ -24,19 +24,12 @@ class Container_Manager(object):
 
         """
         try:
-            # 获取一个容器的信息
+            all_containers = self.connection.containers(all=True,
+                                                        size=True)
             if cid:
-                container = self.connection.containers(all=True,
-                                                       size=True,
-                                                       filters={'id': cid})
-                if len(container) == 1:
-                    container = container[0]
-                return (0, '', container)
-            # 获取所有容器的信息
-            else:
-                all_containers = self.connection.containers(all=True,
-                                                            size=True)
-                return (0, '', all_containers)
+                for c in xrange(len(all_containers)):
+                    if all_containers[c]['Id'] == cid:
+                        return (0, '', all_containers[c])
 
         except Exception, e:
             return (1, {'error': str(e), 'id': db_id}, '')
