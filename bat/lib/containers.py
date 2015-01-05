@@ -442,6 +442,10 @@ class Container_Manager(object):
                 new_msg['command'] = simplejson.dumps(bash_command)
                 s, m, r = self.exec_container(new_msg, console=False)
                 if s == 0:
+                    if 'command' in msg.keys():
+                        del msg['command']
+                    if 'processes' in msg.keys():
+                        del msg['processes']
                     return (0, '', msg)
                 else:
                     return (s, m, r)
