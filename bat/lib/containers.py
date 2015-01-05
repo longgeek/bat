@@ -59,7 +59,7 @@ class Container_Manager(object):
         try:
             command = msg['command']
             if not command:
-                command = '/bin/bash'
+                command = 'bash'
             c_id = self.connection.create_container(
                 name=msg['name'],
                 image=msg['image_name'],
