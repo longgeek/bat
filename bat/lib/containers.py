@@ -16,6 +16,7 @@ class Container_Manager(object):
         self.connection = DockerSingLeton()
         self.range_ports = xrange(4301, 4319)
         self.container_path = '/var/lib/docker/aufs/diff'
+        self.nginx_root = '/usr/share/nginx/html'
 
     def _containers(self, db_id, cid=None):
         """获取所有 Container 的信息, 或一个容器
@@ -340,15 +341,35 @@ class Container_Manager(object):
                     exec_command = simplejson.loads(msg['command'])
                     free_ports = r['free_ports']
                     will_command = []
+                    nginx_command = []
                     for i in xrange(len(exec_command)):
+                        if '.' in exec_command[i]:
+                            if exec_command[i].startswith('nginx') and \
+                               exec_command[i].split('.')[-1] == 'html':
+                                nginx_command.append(exec_command[i])
+                                continue
+
                         if exec_command[i] not in exist_command:
                             command = base_command % (free_ports[i],
                                                       exec_command[i])
                             will_command.append(command)
 
                     msg['console_command'] = will_command
-                    exec_result = self.exec_container(msg, console=True)
-                    return exec_result
+                    s, m, r = self.exec_container(msg, console=True)
+                    if nginx_command:
+                        if s == 0:
+                            s1, m1, r1 = self._get_port(db_id, c_id, 80)
+                            if s1 == 0:
+                                for c in nginx_command:
+                                    r['console'][c] = {'private_port': 80,
+                                                       'public_port': r1}
+                                return (s, m, r)
+                            else:
+                                return (s1, m1, r1)
+                        else:
+                            return (s, m, r)
+                    else:
+                        return (s, m, r)
                 else:
                     return (s, m, r)
             else:
@@ -362,16 +383,19 @@ class Container_Manager(object):
         try:
             c_id = msg['cid']
             files = msg['files']
+            new_msg = msg
 
             # Docker 容器在 Host 上的路径
             host_dir_path = os.path.join(self.container_path, c_id)
 
+            bash_command = []
+            nginx_process = []
             # 遍历所有的文件
-            for file in files:
+            for f in files:
                 # 容器中的文件路径
-                container_file_path = os.path.dirname(file)
+                container_file_path = os.path.dirname(f)
                 # 容器中的文件名字
-                container_file_name = os.path.basename(file)
+                container_file_name = os.path.basename(f)
                 # 文件所在 Host 上目录的完全路径
                 full_path = host_dir_path + container_file_path
                 # 文件所在 Host 上的完全路径
@@ -383,8 +407,44 @@ class Container_Manager(object):
 
                 # 写入数据到文件中
                 fo = open(full_file_path, 'w')
-                fo.writelines(files[file].encode('utf-8'))
+                fo.writelines(files[f].encode('utf-8'))
                 fo.close()
+
+                if '.' in f:
+                    f_type = f.split('.')[-1]
+                    if f_type == 'html' or f_type == 'css' or f_type == 'js':
+                        f_path = os.path.dirname(f)
+                        f_name = os.path.basename(f)
+                        f_nginx_path = self.nginx_root + f_path
+                        f_host_dir_path = host_dir_path + f_nginx_path
+                        f_host_file_path = os.path.join(
+                            f_host_dir_path,
+                            f_name
+                        )
+
+                        if not os.path.exists(f_host_dir_path):
+                            os.makedirs(f_host_dir_path)
+
+                        if not os.path.exists(f_host_file_path):
+                            bash_command.append('ln -sf %s %s' %
+                                                (f, f_nginx_path))
+                        s, m, r = self.top_container(msg)
+                        if s == 0:
+                            for p in r['processes']:
+                                if 'nginx: worker process' in p:
+                                    nginx_process.append(p)
+                        else:
+                            return (s, m, r)
+            if not nginx_process:
+                bash_command.append('service nginx start')
+
+            if bash_command:
+                new_msg['command'] = simplejson.dumps(bash_command)
+                s, m, r = self.exec_container(new_msg, console=False)
+                if s == 0:
+                    return (0, '', msg)
+                else:
+                    return (s, m, r)
             return (0, '', msg)
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
@@ -401,11 +461,11 @@ class Container_Manager(object):
 
             files_content = {}
             # 遍历所有的文件
-            for file in files:
+            for f in files:
                 # 容器中的文件路径
-                container_file_path = os.path.dirname(file)
+                container_file_path = os.path.dirname(f)
                 # 容器中的文件名字
-                container_file_name = os.path.basename(file)
+                container_file_name = os.path.basename(f)
                 # 文件所在 Host 上目录的完全路径
                 full_path = host_dir_path + container_file_path
                 # 文件所在 Host 上的完全路径
@@ -418,8 +478,8 @@ class Container_Manager(object):
                 if not os.path.exists(full_file_path):
                     os.mknod(full_file_path, 0644)
 
-                s, m, r = self._exec_file_content(msg['id'], c_id, file)
-                files_content[file] = r
+                s, m, r = self._exec_file_content(msg['id'], c_id, f)
+                files_content[f] = r
             msg['files'] = files_content
             return (0, '', msg)
 
