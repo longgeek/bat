@@ -114,7 +114,11 @@ class Container_Manager(object):
             return (0, '', msg)
 
         except Exception, e:
-            return (1, {'error': str(e), 'id': msg['id']}, '')
+            return (1,
+                    {'error': str(e),
+                     'id': msg['id'],
+                     'message_type': msg['message_type']},
+                    '')
 
     def stop_container(self, msg, timeout=5):
         """停止 Container"""
