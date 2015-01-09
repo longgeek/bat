@@ -427,7 +427,8 @@ class Container_Manager(object):
                         )
 
                         if not os.path.exists(f_host_dir_path):
-                            os.makedirs(f_host_dir_path)
+                            bash_command.insert(0,
+                                                'mkdir -p %s' % f_nginx_path)
 
                         if not os.path.exists(f_host_file_path):
                             bash_command.append('ln -sf %s %s' %
