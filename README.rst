@@ -52,7 +52,10 @@ Dependent on the installation of the bat:
 
 The configuration file:
     cd bat/
-    cp -r etc/* /etc/
+    mkdir /etc/bat
+    cp etc/bat/bat.conf.sample /etc/bat/bat.conf
+    cp etc/init/bat-worker.conf /etc/init/
+    cp etc/logrotate.d/bat-worker /etc/logrotate.d/
     cp sbin/bat-worker /usr/sbin/
     mkdir /var/log/bat
     chown :adm /var/log/bat

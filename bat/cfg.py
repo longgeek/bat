@@ -97,11 +97,14 @@ class BatConfig(object):
                     verbose = 'false'
 
                 if (debug == 'true' or debug == 'True') and \
-                   (verbose == 'false' or verbose == 'false'):
+                   (verbose == 'false' or verbose == 'False'):
                     level = logging.DEBUG
                 elif (debug == 'false' or debug == 'False') and \
                      (verbose == 'false' or verbose == 'False'):
                     level = logging.WARNING
+                elif (debug == 'false' or debug == 'False') and \
+                     (verbose == 'true' or verbose == 'True'):
+                    level = logging.INFO
                 else:
                     level = logging.DEBUG
 

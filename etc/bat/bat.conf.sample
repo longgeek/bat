@@ -17,6 +17,7 @@ amqp_interface = eth0
 # Print more verbose output (set logging level to INFO instead
 # of default WARNING level). (boolean value)
 # verbose = false
+verbose = true
 
 # set, logging will go to stdout. (string value)
 log_file = bat-worker.log

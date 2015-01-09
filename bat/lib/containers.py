@@ -392,8 +392,6 @@ class Container_Manager(object):
             # Docker 容器在 Host 上的路径
             host_dir_path = os.path.join(self.container_path, c_id)
 
-            bash_command = []
-            nginx_process = []
             # 遍历所有的文件
             for f in files:
                 # 容器中的文件路径
@@ -414,46 +412,10 @@ class Container_Manager(object):
                 fo.writelines(files[f].encode('utf-8'))
                 fo.close()
 
-                if '.' in f:
-                    f_type = f.split('.')[-1]
-                    if f_type == 'html' or f_type == 'css' or f_type == 'js':
-                        f_path = os.path.dirname(f)
-                        f_name = os.path.basename(f)
-                        f_nginx_path = self.nginx_root + f_path
-                        f_host_dir_path = host_dir_path + f_nginx_path
-                        f_host_file_path = os.path.join(
-                            f_host_dir_path,
-                            f_name
-                        )
+                s1, m1, r1 = self._link_file_to_nginx(f, new_msg)
+                if s1 != 0:
+                    return (s1, m1, r1)
 
-                        if not os.path.exists(f_host_dir_path):
-                            bash_command.insert(0,
-                                                'mkdir -p %s' % f_nginx_path)
-
-                        if not os.path.exists(f_host_file_path):
-                            bash_command.append('ln -sf %s %s' %
-                                                (f, f_nginx_path))
-                        s, m, r = self.top_container(msg)
-                        if s == 0:
-                            for p in r['processes']:
-                                if 'nginx: worker process' in p:
-                                    nginx_process.append(p)
-                        else:
-                            return (s, m, r)
-            if not nginx_process:
-                bash_command.append('service nginx start')
-
-            if bash_command:
-                new_msg['command'] = simplejson.dumps(bash_command)
-                s, m, r = self.exec_container(new_msg, console=False)
-                if s == 0:
-                    if 'command' in msg.keys():
-                        del msg['command']
-                    if 'processes' in msg.keys():
-                        del msg['processes']
-                    return (0, '', msg)
-                else:
-                    return (s, m, r)
             return (0, '', msg)
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
@@ -464,6 +426,7 @@ class Container_Manager(object):
         try:
             c_id = msg['cid']
             files = msg['files']
+            new_msg = msg
 
             # Docker 容器在 Host 上的路径
             host_dir_path = os.path.join(self.container_path, c_id)
@@ -483,12 +446,20 @@ class Container_Manager(object):
                 # 如果 full_path 不存在, 就创建
                 if not os.path.exists(full_path):
                     os.makedirs(full_path)
-                # 如果文件不存在, 创建一个空文件
+
+                # 如果文件不存在, 写入默认内容
                 if not os.path.exists(full_file_path):
-                    os.mknod(full_file_path, 0644)
+                    fo = open(full_file_path, 'w')
+                    fo.writelines(files[f].encode('utf-8'))
+                    fo.close()
 
                 s, m, r = self._exec_file_content(msg['id'], c_id, f)
                 files_content[f] = r
+
+                s1, m1, r1 = self._link_file_to_nginx(f, new_msg)
+                if s1 != 0:
+                    return (s1, m1, r1)
+
             msg['files'] = files_content
             return (0, '', msg)
 
@@ -503,6 +474,51 @@ class Container_Manager(object):
             return (0, '', content)
         except Exception, e:
             return (1, {'error': str(e), 'id': id}, '')
+
+    def _link_file_to_nginx(self, f, new_msg):
+        """判断文件类型, 如果是 html css js 文件则链接文件到 Ningx 中"""
+
+        bash_command = []
+        nginx_process = []
+        host_dir_path = os.path.join(self.container_path, new_msg['cid'])
+        if '.' in f:
+            f_type = f.split('.')[-1]
+            if f_type == 'html' or f_type == 'css' or f_type == 'js':
+                f_path = os.path.dirname(f)
+                f_name = os.path.basename(f)
+                f_nginx_path = self.nginx_root + f_path
+                f_host_dir_path = host_dir_path + f_nginx_path
+                f_host_file_path = os.path.join(
+                    f_host_dir_path,
+                    f_name
+                )
+
+                if not os.path.exists(f_host_dir_path):
+                    bash_command.insert(0,
+                                        'mkdir -p %s' % f_nginx_path)
+
+                if not os.path.exists(f_host_file_path):
+                    bash_command.append('ln -sf %s %s' %
+                                        (f, f_nginx_path))
+                s, m, r = self.top_container(new_msg)
+                if s == 0:
+                    for p in r['processes']:
+                        if 'nginx: worker process' in p:
+                            nginx_process.append(p)
+                else:
+                    return (s, m, r)
+        else:
+            return (0, '', '')
+
+        if not nginx_process:
+            bash_command.append('service nginx start')
+
+        if bash_command:
+            new_msg['command'] = simplejson.dumps(bash_command)
+            s, m, r = self.exec_container(new_msg, console=False)
+            if s != 0:
+                return (s, m, r)
+        return (0, '', '')
 
 
 def main(msg):
