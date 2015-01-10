@@ -4,6 +4,8 @@
 
 import re
 import os
+import signal
+import subprocess
 import simplejson
 
 from bat.lib.sing_leton import DockerSingLeton
@@ -14,7 +16,7 @@ class Container_Manager(object):
 
     def __init__(self):
         self.connection = DockerSingLeton()
-        self.range_ports = xrange(4301, 4319)
+        self.range_ports = xrange(4301, 4320)
         self.container_path = '/var/lib/docker/aufs/diff'
         self.nginx_root = '/usr/share/nginx/html'
 
@@ -343,7 +345,9 @@ class Container_Manager(object):
                 if s == 0:
                     exist_command = r['console'].keys()
                     exec_command = simplejson.loads(msg['command'])
+                    use_ports = r['use_ports']
                     free_ports = r['free_ports']
+                    kill_ports = []
                     will_command = []
                     nginx_command = []
                     for i in xrange(len(exec_command)):
@@ -354,9 +358,25 @@ class Container_Manager(object):
                                 continue
 
                         if exec_command[i] not in exist_command:
-                            command = base_command % (free_ports[i],
-                                                      exec_command[i])
+                            try:
+                                command = base_command % (free_ports[i],
+                                                          exec_command[i])
+                            except Exception, e:
+                                command = base_command % (use_ports[0],
+                                                          exec_command[i])
+                                kill_ports.append(use_ports[0])
+                                use_ports.pop(0)
                             will_command.append(command)
+
+                    if kill_ports:
+                        for port in kill_ports:
+                            p = subprocess.Popen(["ps aux | awk \
+                                '/\-\-port=%d \-\-login/ {print $2}'" % port],
+                                                 stdout=subprocess.PIPE,
+                                                 shell=True)
+                            out, err = p.communicate()
+                            pid = int(out.splitlines()[0].split(None, 1)[0])
+                            os.kill(pid, signal.SIGKILL)
 
                     msg['console_command'] = will_command
                     s, m, r = self.exec_container(msg, console=True)
