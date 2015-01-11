@@ -47,11 +47,11 @@ Install the docker and other dependent software package:
 Dependent on the installation of the bat:
     git clone git@git.pyindex.com:reviewdev/bat.git
     cd bat/
-    pip install -r requirements.txt
+    python setup.py egg_info
+    pip install -r bat.egg-info/requires.txt
     python setup.py install (Develop mode: python setup.py develop)
 
 The configuration file:
-    cd bat/
     mkdir /etc/bat
     cp etc/bat/bat.conf.sample /etc/bat/bat.conf
     cp etc/init/bat-worker.conf /etc/init/
