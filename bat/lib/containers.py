@@ -4,6 +4,8 @@
 
 import re
 import os
+import time
+import random
 import signal
 import subprocess
 import simplejson
@@ -56,8 +58,13 @@ class Container_Manager(object):
             command = msg['command']
             if not command:
                 command = 'bash'
+
+            # container_name == 'c-' + db_id + random str
+            sample = 'abcdefghijklmnopqrstuvwxyz' + str(time.time())
+            random_str = ''.join(random.sample(sample, 11))
+            msg['container_name'] = 'c-%s' % str(msg['id']) + random_str
             c_id = self.connection.create_container(
-                name=msg['name'],
+                name=msg['container_name'],
                 image=msg['image_name'],
                 ports=msg['ports'],
                 command=command,
@@ -84,7 +91,6 @@ class Container_Manager(object):
                 # 调用 _inspect_c, 拿到 name hostname
                 inspect_c = self._inspect_container(msg['id'], c_id)
                 if inspect_c[0] == 0:
-                    msg['name'] = inspect_c[2]['Name']
                     msg['hostname'] = inspect_c[2]['Config']['Hostname']
                 else:
                     return inspect_c
