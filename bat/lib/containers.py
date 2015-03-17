@@ -19,7 +19,7 @@ class Container_Manager(object):
     def __init__(self):
         self.connection = DockerSingLeton()
         self.range_ports = xrange(4301, 4320)
-        self.container_path = '/var/lib/docker/aufs/diff'
+        self.container_path = '/var/lib/docker/aufs/mnt'
         self.nginx_root = '/usr/share/nginx/html'
 
     def _containers(self, db_id, cid=None):
@@ -67,7 +67,7 @@ class Container_Manager(object):
                 command = 'bash'
 
             # container_name == 'c-' + db_id + random str
-            sample = 'abcdefghijklmnopqrstuvwxyz' + str(time.time())
+            sample = 'abcdefghijklmnopqrstuvwxyz' + str(int(time.time()))
             random_str = ''.join(random.sample(sample, 11))
             msg['container_name'] = 'c-%s' % str(msg['id']) + random_str
             c_id = self.connection.create_container(
