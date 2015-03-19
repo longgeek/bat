@@ -102,6 +102,11 @@ class Container_Manager(object):
                 else:
                     return inspect_c
 
+                s, m, r = self._get_port(msg['id'], msg['cid'], 80)
+                if s == 0:
+                    msg['www_port'] = r
+                else:
+                    return (s, m, r)
                 return (0, '', msg)
             else:
                 return start_c
@@ -118,9 +123,15 @@ class Container_Manager(object):
         if not c_id:
             container_id = msg['cid']
 
+        msg['cid'] = container_id
         try:
             self.connection.start(container=container_id,
                                   publish_all_ports=True)
+            s, m, r = self._get_port(msg['id'], msg['cid'], 80)
+            if s == 0:
+                msg['www_port'] = r
+            else:
+                return (s, m, r)
             containers = self._containers(msg['id'], container_id)
             if containers[0] == 0:
                 msg['status'] = containers[2]['Status']
