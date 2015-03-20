@@ -331,16 +331,16 @@ class Container_Manager(object):
                 port = int(port_group.group(1))
                 use_ports.append(port)
 
-            # 获取具体的命令, e.g. 'vim /opt/scripts.py'
-            command = process.split('--login=False --cmd=')[-1]
+                # 获取具体的命令, e.g. 'vim /opt/scripts.py'
+                command = process.split('--login=False --cmd=')[-1]
 
-            # 获取映射端口
-            s, m, r = self._get_port(db_id, c_id, port)
-            if s == 0:
-                result['console'][command] = {'public_port': int(r),
-                                              'private_port': port}
-            else:
-                return (s, m, r)
+                # 获取映射端口
+                s, m, r = self._get_port(db_id, c_id, port)
+                if s == 0:
+                    result['console'][command] = {'public_port': int(r),
+                                                  'private_port': port}
+                else:
+                    return (s, m, r)
 
         # 算出空闲的端口, 保存, return 数据
         free_ports = set(self.range_ports) - set(sorted(use_ports))
