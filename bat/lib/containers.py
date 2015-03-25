@@ -406,10 +406,10 @@ class Container_Manager(object):
                     s, m, r = self.exec_container(msg, console=True)
                     if nginx_command:
                         if s == 0:
-                            s1, m1, r1 = self._get_port(db_id, c_id, 80)
+                            s1, m1, r1 = self._get_port(db_id, c_id, 81)
                             if s1 == 0:
                                 for c in nginx_command:
-                                    r['console'][c] = {'private_port': 80,
+                                    r['console'][c] = {'private_port': 81,
                                                        'public_port': r1}
                                 return (s, m, r)
                             else:
