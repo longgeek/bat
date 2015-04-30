@@ -78,6 +78,8 @@ class Container_Manager(object):
                 tty=True,
                 detach=True,
                 stdin_open=True,
+                mem_limit="512m",
+                memswap_limit=-1,
             )['Id']
 
             # 启动 Container
@@ -235,9 +237,14 @@ class Container_Manager(object):
 
             if c_list:
                 for c in c_list:
-                    self.connection.execute(container=c_id, cmd=c,
-                                            detach=True, tty=True,
-                                            stderr=False, stdout=False)
+                    exec_id = self.connection.exec_create(container=c_id,
+                                                          cmd=c,
+                                                          tty=True,
+                                                          stderr=False,
+                                                          stdout=False)['Id']
+                    self.connection.exec_start(exec_id=exec_id,
+                                               detach=True,
+                                               tty=True)
             # 检查进程是否成功启动
             if console:
                 # 调用 _get_console_process 获取容器所有的 console 进程
@@ -283,12 +290,10 @@ class Container_Manager(object):
             if s == 0:
                 processes = r['processes']
                 processes_list = []
-                # 从所有进程中过滤出包含 'nsenter-exec' 关键字的进程
                 # 保存结果到 processes_list 中
                 for p in xrange(len(processes)):
                     process = processes[p][-1]
-                    if 'nsenter-exec' in process:
-                        process = process.split(' -- ', 1)[1]
+                    if 'butterfly.server.py' in process:
                         processes_list.append(process)
                 # 返回过滤的进程
                 return (0, '', processes_list)
