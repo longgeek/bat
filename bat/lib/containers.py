@@ -516,10 +516,14 @@ class Container_Manager(object):
             return (1, {'error': str(e), 'id': msg['id']}, '')
 
     def _exec_file_content(self, db_id, c_id, filename):
-        """通过 Docker execute api 获取容器中文件内容"""
+        """通过 Docker exec api 获取容器中文件内容"""
 
         try:
-            content = self.connection.execute(c_id, 'cat %s' % filename)
+            exec_id = self.connection.exec_create(
+                container=c_id,
+                cmd='cat %s' % filename
+            )['Id']
+            content = self.connection.exec_start(exec_id=exec_id)
             return (0, '', content)
         except Exception, e:
             return (1, {'error': str(e), 'id': id}, '')
