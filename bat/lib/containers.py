@@ -10,6 +10,7 @@ import signal
 import subprocess
 import simplejson
 
+from docker.utils import create_host_config
 from bat.lib.sing_leton import DockerSingLeton
 
 
@@ -80,6 +81,8 @@ class Container_Manager(object):
                 stdin_open=True,
                 mem_limit="512m",
                 memswap_limit=-1,
+                cpuset=0,
+                host_config=create_host_config(publish_all_ports=True),
             )['Id']
 
             # 启动 Container
@@ -127,8 +130,7 @@ class Container_Manager(object):
 
         msg['cid'] = container_id
         try:
-            self.connection.start(container=container_id,
-                                  publish_all_ports=True)
+            self.connection.start(container=container_id)
             s, m, r = self._get_port(msg['id'], msg['cid'], 80)
             if s == 0:
                 msg['www_port'] = r
