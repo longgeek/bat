@@ -31,7 +31,7 @@ We have integration with
 * git@git.pyindex.com:reviewdev/boss.git (online manager)
 * git@git.pyindex.com:reviewdev/telegraph_pole (restful api)
 * git@git.pyindex.com:reviewdev/mountain_tai.git (scheduler)
-
+* https://github.com/thstack/butterfly/tree/thstack/develop (console)
 How to use (For Ubuntu-14.04.1 Server)
 --------------------------------------
 Add Docker apt source:
@@ -43,6 +43,7 @@ If necessary, please update the system as well as the kernel:
 
 Install the docker and other dependent software package:
     apt-get install lxc-docker-1.4.0 python-pip git
+    apt-get install python-dev libffi-dev libssl-dev libxml2-dev libxslt1-dev
 
 Dependent on the installation of the bat:
     git clone git@git.pyindex.com:reviewdev/bat.git
@@ -72,6 +73,21 @@ Modify the configuration file:
 
 Run it:
     service bat-worker restart
+
+Sure Docker Host the "/pythonpie/.console/" exist.
+Use virtualenv build butterfly in the /pythonpie/.console/local/butterfly:
+
+    mkdir /pythonpie
+    pip install virtualenv
+    virtualenv /pythonpie/.console
+    source /pythonpie/.console/bin/activate
+    cd /pythonpie/.console/local/
+    git clone git@github.com:thstack/butterfly.git
+    cd butterfly
+    git checkout thstack/develop
+    pip install -r requirements.txt
+    python setup.py develop
+    deactivate
 
 Log:
     tail -f /var/log/bat/bat.log

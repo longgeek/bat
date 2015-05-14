@@ -32,16 +32,20 @@ class Container_Manager(object):
         try:
             # 获取一个容器的信息
             if cid:
-                container = self.connection.containers(all=True,
-                                                       size=True,
-                                                       filters={'id': cid})
+                container = self.connection.containers(
+                    all=True,
+                    size=True,
+                    filters={'id': cid}
+                )
                 if len(container) == 1:
                     container = container[0]
                 return (0, '', container)
             # 获取所有容器的信息
             else:
-                all_containers = self.connection.containers(all=True,
-                                                            size=True)
+                all_containers = self.connection.containers(
+                    all=True,
+                    size=True
+                )
                 return (0, '', all_containers)
 
         except Exception, e:
@@ -82,7 +86,15 @@ class Container_Manager(object):
                 mem_limit="512m",
                 memswap_limit=-1,
                 cpuset=0,
-                host_config=create_host_config(publish_all_ports=True),
+                volumes=['/pythonpie/.console', '/pythonpie/.console'],
+                host_config=create_host_config(
+                    publish_all_ports=True,
+                    binds={
+                        '/pythonpie/.console': {
+                            'bind': '/pythonpie/.console',
+                            'ro': True,
+                        }
+                    }),
             )['Id']
 
             # 启动 Container
@@ -106,12 +118,6 @@ class Container_Manager(object):
                     msg['hostname'] = inspect_c[2]['Config']['Hostname']
                 else:
                     return inspect_c
-
-                s, m, r = self._get_port(msg['id'], msg['cid'], 80)
-                if s == 0:
-                    msg['www_port'] = r
-                else:
-                    return (s, m, r)
                 return (0, '', msg)
             else:
                 return start_c
@@ -121,7 +127,11 @@ class Container_Manager(object):
                         'message_type': 'create_container'}, '')
 
     def start_container(self, msg, c_id=None, publish_all_ports=True):
-        """启动 Container"""
+        """启动 Container
+        1. 直接启动容器
+        2. 创建一个 web_console 的进程
+        3. 获取 80、8000、9000 所对于的外部端口
+        """
 
         if not msg['cid']:
             container_id = c_id
@@ -134,6 +144,24 @@ class Container_Manager(object):
             s, m, r = self._get_port(msg['id'], msg['cid'], 80)
             if s == 0:
                 msg['www_port'] = r
+                s, m, r = self.web_console_container(msg)
+                if s != 0:
+                    return (s, m, r)
+                s, m, r = self._get_port(msg['id'], msg['cid'], r)
+                if s == 0:
+                    msg['ssh_port'] = r
+                    s, m, r = self._get_port(msg['id'], msg['cid'], 8000)
+                    if s == 0:
+                        msg['8000_port'] = r
+                        s, m, r = self._get_port(msg['id'], msg['cid'], 9000)
+                        if s == 0:
+                            msg['9000_port'] = r
+                        else:
+                            return (s, m, r)
+                    else:
+                        return (s, m, r)
+                else:
+                    return (s, m, r)
             else:
                 return (s, m, r)
             containers = self._containers(msg['id'], container_id)
@@ -149,6 +177,62 @@ class Container_Manager(object):
                      'id': msg['id'],
                      'message_type': msg['message_type']},
                     '')
+
+    def web_console_container(self, msg):
+        """用来启动用户的 web 登录进程
+
+        1. 检测 下面的 base_command 进程是否存在
+        2. 存在，则返回监听的端口
+        3. 不存在，创建进程，并返回端口
+        """
+
+        base_command = "/pythonpie/.console/bin/butterfly.server.py \
+--unsecure --host=0.0.0.0 --port=%s --login=True --cmd='bash'"
+
+        try:
+            # 调用 _get_console_process 获取容器的 web_console 进程
+            s, m, r = self._get_console_process(msg, web_console=True)
+            if s == 0:
+                # 进程已经启动，直接返回监听的端口
+                if isinstance(r, tuple):
+                    web_process = r[0][r[1]]
+                    port_group = re.search(r'--port=(\d+) --login=True',
+                                           web_process)
+                    if port_group:
+                        port = int(port_group.group(1))
+                        return (0, '', port)
+                    else:
+                        return (s, m, r)
+                else:
+                    # 调用 _get_console_port 获取所有进程的端口
+                    s, m, r = self._get_console_port(
+                        msg['id'],
+                        msg['cid'],
+                        msg['host'],
+                        msg['username'],
+                        r
+                    )
+                    # 创建进程
+                    if s == 0:
+                        port = r['free_ports'][0]
+                        exec_id = self.connection.exec_create(
+                            container=msg['cid'],
+                            cmd=base_command % port,
+                            tty=True,
+                            stderr=False,
+                            stdout=False
+                        )['Id']
+                        self.connection.exec_start(exec_id=exec_id,
+                                                   detach=True,
+                                                   tty=True)
+                        return (0, '', port)
+                    else:
+                        return (s, m, r)
+            else:
+                return (s, m, r)
+
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
 
     def stop_container(self, msg, timeout=5):
         """停止 Container"""
@@ -239,25 +323,31 @@ class Container_Manager(object):
 
             if c_list:
                 for c in c_list:
-                    exec_id = self.connection.exec_create(container=c_id,
-                                                          cmd=c,
-                                                          tty=True,
-                                                          stderr=False,
-                                                          stdout=False)['Id']
-                    self.connection.exec_start(exec_id=exec_id,
-                                               detach=True,
-                                               tty=True)
+                    exec_id = self.connection.exec_create(
+                        container=c_id,
+                        cmd=c,
+                        tty=True,
+                        stderr=False,
+                        stdout=False
+                    )['Id']
+                    self.connection.exec_start(
+                        exec_id=exec_id,
+                        detach=True,
+                        tty=True
+                    )
             # 检查进程是否成功启动
             if console:
                 # 调用 _get_console_process 获取容器所有的 console 进程
                 s, m, r = self._get_console_process(msg)
                 if s == 0:
                     # 调用 _get_console_port 获取容器所有的 console 端口
-                    process_info = self._get_console_port(msg['id'],
-                                                          c_id,
-                                                          msg['host'],
-                                                          msg['username'],
-                                                          r)
+                    process_info = self._get_console_port(
+                        msg['id'],
+                        c_id,
+                        msg['host'],
+                        msg['username'],
+                        r
+                    )
                     if process_info[0] == 0:
                         process_info[2].pop('use_ports')
                         process_info[2].pop('free_ports')
@@ -283,7 +373,7 @@ class Container_Manager(object):
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
 
-    def _get_console_process(self, msg):
+    def _get_console_process(self, msg, web_console=False):
         """获取所有 console 进程"""
 
         try:
@@ -297,8 +387,15 @@ class Container_Manager(object):
                     process = processes[p][-1]
                     if 'butterfly.server.py' in process:
                         processes_list.append(process)
-                # 返回过滤的进程
-                return (0, '', processes_list)
+                    if web_console:
+                        if 'buttonfly.server.py' and 'login=True' in process:
+                            web_console_index = len(processes_list) - 1
+                if 'web_console_index' in dir():
+                    # 返回过滤的进程和 web_console 进程的索引
+                    return (0, '', (processes_list, web_console_index))
+                else:
+                    # 只返回过滤的进程
+                    return (0, '', processes_list)
             else:
                 return (s, m, r)
 
@@ -317,14 +414,16 @@ class Container_Manager(object):
         """获取所有 console 的端口和映射端口"""
 
         # 定义 return 数据
-        result = {'id': db_id,
-                  'cid': c_id,
-                  'host': host,
-                  'console': {},
-                  'use_ports': [],
-                  'free_ports': [],
-                  'username': username,
-                  'message_type': 'console_container'}
+        result = {
+            'id': db_id,
+            'cid': c_id,
+            'host': host,
+            'console': {},
+            'use_ports': [],
+            'free_ports': [],
+            'username': username,
+            'message_type': 'console_container'
+        }
 
         if not processes:
             result['free_ports'] = self.range_ports
@@ -361,18 +460,20 @@ class Container_Manager(object):
         try:
             db_id = msg['id']
             c_id = msg['cid']
-            base_command = "butterfly.server.py --unsecure \
---host=0.0.0.0 --port=%s --login=False --cmd='%s'"
+            base_command = "/pythonpie/.console/bin/butterfly.server.py \
+--unsecure --host=0.0.0.0 --port=%s --login=False --cmd='%s'"
 
             # 调用 _get_console_process 获取容器所有的 console 进程
             status, message, result = self._get_console_process(msg)
             if status == 0:
                 # 调用 _get_console_port 获取容器所有的 console 端口
-                s, m, r = self._get_console_port(db_id,
-                                                 c_id,
-                                                 msg['host'],
-                                                 msg['username'],
-                                                 result)
+                s, m, r = self._get_console_port(
+                    db_id,
+                    c_id,
+                    msg['host'],
+                    msg['username'],
+                    result
+                )
                 if s == 0:
                     exist_command = r['console'].keys()
                     exec_command = simplejson.loads(msg['command'])
