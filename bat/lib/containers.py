@@ -639,7 +639,8 @@ class Container_Manager(object):
         host_dir_path = os.path.join(self.container_path, new_msg['cid'])
         if '.' in f:
             f_type = f.split('.')[-1]
-            if f_type == 'html' or f_type == 'css' or f_type == 'js':
+            if f_type == 'html' or f_type == 'css' or \
+                    f_type == 'js' or f_type == 'json':
                 f_path = os.path.dirname(f)
                 f_name = os.path.basename(f)
                 f_nginx_path = self.nginx_root + f_path
