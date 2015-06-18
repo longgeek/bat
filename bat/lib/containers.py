@@ -93,6 +93,10 @@ class Container_Manager(object):
                         '/pythonpie/.console': {
                             'bind': '/pythonpie/.console',
                             'ro': True,
+                        },
+                        '/pythonpie/.virtualenv': {
+                            'bind': '/pythonpie/.virtualenv',
+                            'ro': True,
                         }
                     }),
             )['Id']
@@ -177,6 +181,16 @@ class Container_Manager(object):
                      'id': msg['id'],
                      'message_type': msg['message_type']},
                     '')
+
+    def inspect_container(self, msg):
+        """获取一个 Container 的信息"""
+
+        try:
+            container = self.connection.inspect_container(msg['cid'])
+            msg["container_info"] = container
+            return (0, '', msg)
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['db_id']}, '')
 
     def web_console_container(self, msg):
         """用来启动用户的 web 登录进程
@@ -321,20 +335,27 @@ class Container_Manager(object):
             else:
                 c_list = msg['console_command']
 
-            if c_list:
-                for c in c_list:
-                    exec_id = self.connection.exec_create(
-                        container=c_id,
-                        cmd=c,
-                        tty=True,
-                        stderr=False,
-                        stdout=False
-                    )['Id']
-                    self.connection.exec_start(
-                        exec_id=exec_id,
-                        detach=True,
-                        tty=True
-                    )
+            if 'wait' in msg and msg['wait']:
+                if c_list:
+                    for c in c_list:
+                        exec_id = self.connection.exec_create(container=c_id,
+                                                              cmd=c)['Id']
+                        self.connection.exec_start(exec_id=exec_id)
+            else:
+                if c_list:
+                    for c in c_list:
+                        exec_id = self.connection.exec_create(
+                            container=c_id,
+                            cmd=c,
+                            tty=True,
+                            stderr=False,
+                            stdout=False
+                        )['Id']
+                        self.connection.exec_start(
+                            exec_id=exec_id,
+                            detach=True,
+                            tty=True
+                        )
             # 检查进程是否成功启动
             if console:
                 # 调用 _get_console_process 获取容器所有的 console 进程
@@ -618,6 +639,33 @@ class Container_Manager(object):
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
 
+    def files_delete_container(self, msg):
+        """删除容器中的文件
+
+            1. 获取容器的 pid
+            2. 遍历所有要删除的目录, 看是否存在
+        """
+
+        try:
+            s, m, r = self._inspect_container(msg['id'], msg['cid'])
+            if s == 0:
+                container_pid = r['State']['Pid']
+            else:
+                return (s, m, r)
+            new_files = {}
+            base_path = "/proc/%s/root/" % container_pid
+
+            for f in msg['files']:
+                if os.path.exists(base_path + f):
+                    os.remove(base_path + f)
+                    new_files[f] = "deleted"
+                else:
+                    new_files[f] = "does not exist"
+            msg["files"] = new_files
+            return (0, "", msg)
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
     def _exec_file_content(self, db_id, c_id, filename):
         """通过 Docker exec api 获取容器中文件内容"""
 
@@ -676,6 +724,60 @@ class Container_Manager(object):
             if s != 0:
                 return (s, m, r)
         return (0, '', '')
+
+    def dirs_create_container(self, msg):
+        """在容器中创建目录
+
+            1. 获取容器的 pid
+            2. 遍历所有要创建的目录, 看是否创建
+        """
+
+        try:
+            s, m, r = self._inspect_container(msg['id'], msg['cid'])
+            if s == 0:
+                container_pid = r['State']['Pid']
+            else:
+                return (s, m, r)
+            new_dirs = {}
+            base_path = "/proc/%s/root/" % container_pid
+
+            for d in msg['dirs']:
+                if os.path.exists(base_path + d):
+                    new_dirs[d] = "exist"
+                else:
+                    os.makedirs(base_path + d)
+                    new_dirs[d] = "created"
+            msg["dirs"] = new_dirs
+            return (0, "", msg)
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
+    def dirs_delete_container(self, msg):
+        """在容器中删除目录
+
+            1. 获取容器的 pid
+            2. 遍历所有要删除的目录, 看是否存在
+        """
+
+        try:
+            s, m, r = self._inspect_container(msg['id'], msg['cid'])
+            if s == 0:
+                container_pid = r['State']['Pid']
+            else:
+                return (s, m, r)
+            new_dirs = {}
+            base_path = "/proc/%s/root/" % container_pid
+
+            for d in msg['dirs']:
+                if os.path.exists(base_path + d):
+                    __import__('shutil').rmtree(base_path + d)
+                    new_dirs[d] = "deleted"
+                else:
+                    new_dirs[d] = "does not exist"
+            msg["dirs"] = new_dirs
+            return (0, "", msg)
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
 
 
 def main(msg):

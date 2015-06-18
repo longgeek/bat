@@ -89,5 +89,15 @@ Use virtualenv build butterfly in the /pythonpie/.console/local/butterfly:
     python setup.py develop
     deactivate
 
+Sure Docker Host the "/pythonpie/.virtualenv/" exist.
+The Django Practice topic is heavily dependent on it:
+
+    mkdir -p /pythonpie/.virtualenv/django
+    virtualenv /pythonpie/.virtualenv/django/django-1.8.2
+    source /pythonpie/.virtualenv/django/django-1.8.2/bin/activate
+    pip install "django==1.8.2"
+    deactivate
+    sed -i "s/'django.middleware.clickjacking.XFrameOptionsMiddleware'/# 'django.middleware.clickjacking.XFrameOptionsMiddleware'/g" /pythonpie/.virtualenv/django/django-1.8.2/lib/python2.7/site-packages/django/conf/project_template/project_name/settings.py
+
 Log:
     tail -f /var/log/bat/bat.log
