@@ -554,6 +554,35 @@ class Container_Manager(object):
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
 
+    def files_list_container(self, msg):
+        """列出容器中的文件
+
+            1. 获取容器的 pid
+            2. 遍历目录, 列出文件
+        """
+
+        try:
+            s, m, r = self._inspect_container(msg['id'], msg['cid'])
+            if s == 0:
+                container_pid = r['State']['Pid']
+            else:
+                return (s, m, r)
+
+            new_dirs = {}
+            base_path = "/proc/%s/root" % container_pid
+            for d in msg['dirs']:
+                p = subprocess.Popen(["tree -i -J %s" % (base_path + d)],
+                                     stdout=subprocess.PIPE,
+                                     shell=True)
+                data = eval(p.stdout.read())
+                data[0]['name'] = data[0]['name'].replace(base_path, '')
+                new_dirs[d] = data
+                p.stdout.close()
+            msg["dirs"] = new_dirs
+            return (0, "", msg)
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
     def files_write_container(self, msg):
         """为容器中的文件写入数据"""
 

@@ -99,5 +99,13 @@ The Django Practice topic is heavily dependent on it:
     deactivate
     sed -i "s/'django.middleware.clickjacking.XFrameOptionsMiddleware'/# 'django.middleware.clickjacking.XFrameOptionsMiddleware'/g" /pythonpie/.virtualenv/django/django-1.8.2/lib/python2.7/site-packages/django/conf/project_template/project_name/settings.py
 
+Sure tree command the >= 1.7.0.
+Install:
+
+    wget https://launchpadlibrarian.net/173977087/tree_1.7.0.orig.tar.gz
+    tar zxvf tree_1.7.0.orig.tar.gz
+    cd tree-1.7.0
+    make
+    make install
 Log:
     tail -f /var/log/bat/bat.log
