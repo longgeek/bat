@@ -571,7 +571,7 @@ class Container_Manager(object):
             new_dirs = {}
             base_path = "/proc/%s/root" % container_pid
             for d in msg['dirs']:
-                p = subprocess.Popen(["tree -i -J %s" % (base_path + d)],
+                p = subprocess.Popen(["tree -i -J -L 1 %s" % (base_path + d)],
                                      stdout=subprocess.PIPE,
                                      shell=True)
                 data = eval(p.stdout.read())
@@ -654,9 +654,17 @@ class Container_Manager(object):
                     fo = open(full_file_path, 'w')
                     fo.writelines(files[f].encode('utf-8'))
                     fo.close()
-
-                s, m, r = self._exec_file_content(msg['id'], c_id, f)
-                files_content[f] = r
+                    files_content[f] = files[f]
+                else:
+                    # 判断文件是否为普通类型
+                    if self._get_file_type(msg, f):
+                        s, m, r = self._exec_file_content(msg['id'], c_id, f)
+                        if s == 0:
+                            files_content[f] = r
+                        else:
+                            return (s, m, r)
+                    else:
+                        files_content[f] = False
 
                 s1, m1, r1 = self._link_file_to_nginx(f, new_msg)
                 if s1 != 0:
@@ -667,6 +675,31 @@ class Container_Manager(object):
 
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
+
+    def _get_file_type(self, msg, filename):
+        """ 用来判断文件的类型, 是否为普通文件
+
+            Return: True or False
+        """
+        try:
+            s, m, r = self._inspect_container(msg['id'], msg['cid'])
+            if s == 0:
+                container_pid = r['State']['Pid']
+            else:
+                return (s, m, r)
+
+            base_path = "/proc/%s/root" % container_pid
+            p = subprocess.Popen(["file %s" % (base_path + filename)],
+                                 stdout=subprocess.PIPE,
+                                 shell=True)
+            data = p.stdout.read()
+            p.stdout.close()
+            if 'text' in data or 'empty' in data:
+                return True
+            else:
+                return False
+        except:
+            return False
 
     def files_delete_container(self, msg):
         """删除容器中的文件
