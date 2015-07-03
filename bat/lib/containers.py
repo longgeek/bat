@@ -737,6 +737,11 @@ class Container_Manager(object):
                 cmd='cat %s' % filename
             )['Id']
             content = self.connection.exec_start(exec_id=exec_id)
+            try:
+                simplejson.dumps(content)
+            except:
+                content = content.decode('utf-8', 'ignore')
+
             return (0, '', content)
         except Exception, e:
             return (1, {'error': str(e), 'id': id}, '')
