@@ -740,7 +740,7 @@ class Container_Manager(object):
             try:
                 simplejson.dumps(content)
             except:
-                content = content.decode('utf-8', 'ignore')
+                content = content.decode('utf-8', 'replace')
 
             return (0, '', content)
         except Exception, e:
