@@ -1,5 +1,5 @@
 ConfigParser
-docker-py>=1.2.1
+docker-py==1.2.1
 pbr>=0.6,!=0.7,<1.0
 pika>=0.9.14
 simplejson

@@ -74,30 +74,29 @@ Modify the configuration file:
 Run it:
     service bat-worker restart
 
-Sure Docker Host the "/pythonpie/.console/" exist.
-Use virtualenv build butterfly in the /pythonpie/.console/local/butterfly:
+Sure Docker Host the "/storage/.system/.console/" exist.
+Use virtualenv build butterfly in the /storage/.system/.console/local/butterfly:
 
-    mkdir /pythonpie
+    mkdir -p /storage/.system
     pip install virtualenv
-    virtualenv /pythonpie/.console
-    source /pythonpie/.console/bin/activate
-    cd /pythonpie/.console/local/
+    virtualenv /storage/.system/.console
+    source /storage/.system/.console/bin/activate
+    cd /storage/.system/.console/local/
     git clone git@github.com:thstack/butterfly.git
     cd butterfly
-    git checkout thstack/develop
     pip install -r requirements.txt
     python setup.py develop
     deactivate
 
-Sure Docker Host the "/pythonpie/.virtualenv/" exist.
+Sure Docker Host the "/storage/.virtualenv/" exist.
 The Django Practice topic is heavily dependent on it:
 
-    mkdir -p /pythonpie/.virtualenv/django
-    virtualenv /pythonpie/.virtualenv/django/django-1.8.2
-    source /pythonpie/.virtualenv/django/django-1.8.2/bin/activate
+    mkdir -p /storage/.system/.virtualenv/django
+    virtualenv /storage/.system/.virtualenv/django/django-1.8.2
+    source /storage/.system/.virtualenv/django/django-1.8.2/bin/activate
     pip install "django==1.8.2"
     deactivate
-    sed -i "s/'django.middleware.clickjacking.XFrameOptionsMiddleware'/# 'django.middleware.clickjacking.XFrameOptionsMiddleware'/g" /pythonpie/.virtualenv/django/django-1.8.2/lib/python2.7/site-packages/django/conf/project_template/project_name/settings.py
+    sed -i "s/'django.middleware.clickjacking.XFrameOptionsMiddleware'/# 'django.middleware.clickjacking.XFrameOptionsMiddleware'/g" /storage/.system/.virtualenv/django/django-1.8.2/lib/python2.7/site-packages/django/conf/project_template/project_name/settings.py
 
 Sure tree command the >= 1.7.0.
 Install:

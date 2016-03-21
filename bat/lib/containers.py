@@ -66,6 +66,11 @@ class Container_Manager(object):
     def create_container(self, msg):
         """创建 Container"""
 
+        # 在存储中创建用户目录
+        if not os.path.exists('/storage/user_data/%s' % msg['user_id']):
+            os.makedirs('/storage/user_data/%s/me' % msg['user_id'])
+            os.makedirs('/storage/user_data/%s/learn' % msg['user_id'])
+
         try:
             command = msg['command']
             if not command:
@@ -86,16 +91,20 @@ class Container_Manager(object):
                 mem_limit="512m",
                 memswap_limit=-1,
                 cpuset=0,
-                volumes=['/pythonpie/.console', '/pythonpie/.console'],
+                # volumes=['/storage/.system', '/storage/.system'],
                 host_config=create_host_config(
                     publish_all_ports=True,
                     binds={
-                        '/pythonpie/.console': {
-                            'bind': '/pythonpie/.console',
+                        '/storage/.system': {
+                            'bind': '/storage/.system',
                             'ro': True,
                         },
-                        '/pythonpie/.virtualenv': {
-                            'bind': '/pythonpie/.virtualenv',
+                        '/storage/user_data/%s/me' % msg['user_id']: {
+                            'bind': '/storage/me',
+                            'rw': True,
+                        },
+                        '/storage/user_data/%s/learn' % msg['user_id']: {
+                            'bind': '/storage/learn',
                             'ro': True,
                         }
                     }),
@@ -200,7 +209,7 @@ class Container_Manager(object):
         3. 不存在，创建进程，并返回端口
         """
 
-        base_command = "/pythonpie/.console/bin/butterfly.server.py \
+        base_command = "/storage/.system/.console/bin/butterfly.server.py \
 --unsecure --host=0.0.0.0 --port=%s --login=True --cmd='bash'"
 
         try:
@@ -481,7 +490,7 @@ class Container_Manager(object):
         try:
             db_id = msg['id']
             c_id = msg['cid']
-            base_command = "/pythonpie/.console/bin/butterfly.server.py \
+            base_command = "/storage/.system/.console/bin/butterfly.server.py \
 --unsecure --host=0.0.0.0 --port=%s --login=False --cmd='%s'"
 
             # 调用 _get_console_process 获取容器所有的 console 进程
