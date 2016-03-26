@@ -27,6 +27,7 @@ References
 
 We have integration with
 ------------------------
+* https://github.com/thstack/groceries
 * git@git.pyindex.com:reviewdev/looker.git (online)
 * git@git.pyindex.com:reviewdev/boss.git (online manager)
 * git@git.pyindex.com:reviewdev/telegraph_pole (restful api)
@@ -44,6 +45,10 @@ If necessary, please update the system as well as the kernel:
 Install the docker and other dependent software package:
     apt-get install lxc-docker-1.4.0 python-pip git
     apt-get install python-dev libffi-dev libssl-dev libxml2-dev libxslt1-dev
+
+Dependent on the installation of the groceries:
+    mkdir /opt/git && cd /opt/git
+    git clone https://github.com/thstack/groceries
 
 Dependent on the installation of the bat:
     git clone git@git.pyindex.com:reviewdev/bat.git
@@ -91,12 +96,20 @@ Use virtualenv build butterfly in the /storage/.system/.console/local/butterfly:
 Sure Docker Host the "/storage/.virtualenv/" exist.
 The Django Practice topic is heavily dependent on it:
 
+    # django-1.8.2
     mkdir -p /storage/.system/.virtualenv/django
     virtualenv /storage/.system/.virtualenv/django/django-1.8.2
     source /storage/.system/.virtualenv/django/django-1.8.2/bin/activate
     pip install "django==1.8.2"
     deactivate
     sed -i "s/'django.middleware.clickjacking.XFrameOptionsMiddleware'/# 'django.middleware.clickjacking.XFrameOptionsMiddleware'/g" /storage/.system/.virtualenv/django/django-1.8.2/lib/python2.7/site-packages/django/conf/project_template/project_name/settings.py
+
+    # django-1.8.4
+    virtualenv /storage/.system/.virtualenv/django/django-1.8.4
+    source /storage/.system/.virtualenv/django/django-1.8.4/bin/activate
+    pip install "django==1.8.4"
+    deactivate
+    sed -i "s/'django.middleware.clickjacking.XFrameOptionsMiddleware'/# 'django.middleware.clickjacking.XFrameOptionsMiddleware'/g" /storage/.system/.virtualenv/django/django-1.8.4/lib/python2.7/site-packages/django/conf/project_template/project_name/settings.py
 
 Sure tree command the >= 1.7.0.
 Install:

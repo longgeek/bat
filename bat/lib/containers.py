@@ -67,9 +67,9 @@ class Container_Manager(object):
         """创建 Container"""
 
         # 在存储中创建用户目录
-        if not os.path.exists('/storage/user_data/%s' % msg['user_id']):
-            os.makedirs('/storage/user_data/%s/me' % msg['user_id'])
-            os.makedirs('/storage/user_data/%s/learn' % msg['user_id'])
+        if not os.path.exists('/storage/user_data/%s' % msg['username']):
+            os.makedirs('/storage/user_data/%s/me' % msg['username'])
+            os.makedirs('/storage/user_data/%s/learn' % msg['username'])
 
         try:
             command = msg['command']
@@ -99,11 +99,11 @@ class Container_Manager(object):
                             'bind': '/storage/.system',
                             'ro': True,
                         },
-                        '/storage/user_data/%s/me' % msg['user_id']: {
+                        '/storage/user_data/%s/me' % msg['username']: {
                             'bind': '/storage/me',
                             'rw': True,
                         },
-                        '/storage/user_data/%s/learn' % msg['user_id']: {
+                        '/storage/user_data/%s/learn' % msg['username']: {
                             'bind': '/storage/learn',
                             'ro': True,
                         }
@@ -596,30 +596,20 @@ class Container_Manager(object):
         """为容器中的文件写入数据"""
 
         try:
-            c_id = msg['cid']
             files = msg['files']
             new_msg = msg
 
-            # Docker 容器在 Host 上的路径
-            host_dir_path = os.path.join(self.container_path, c_id)
-
             # 遍历所有的文件
             for f in files:
-                # 容器中的文件路径
-                container_file_path = os.path.dirname(f)
-                # 容器中的文件名字
-                container_file_name = os.path.basename(f)
-                # 文件所在 Host 上目录的完全路径
-                full_path = host_dir_path + container_file_path
-                # 文件所在 Host 上的完全路径
-                full_file_path = os.path.join(full_path, container_file_name)
+                # 文件在 Docker 主机上共享存储的路径
+                file_path = os.path.dirname(f)
 
-                # 如果 full_path 不存在, 就创建
-                if not os.path.exists(full_path):
-                    os.makedirs(full_path)
+                # 如果 file_path 不存在, 就创建
+                if not os.path.exists(file_path):
+                    os.makedirs(file_path)
 
                 # 写入数据到文件中
-                fo = open(full_file_path, 'w')
+                fo = open(f, 'w')
                 fo.writelines(files[f].encode('utf-8'))
                 fo.close()
 
@@ -639,28 +629,17 @@ class Container_Manager(object):
             files = msg['files']
             new_msg = msg
 
-            # Docker 容器在 Host 上的路径
-            host_dir_path = os.path.join(self.container_path, c_id)
-
             files_content = {}
             # 遍历所有的文件
             for f in files:
-                # 容器中的文件路径
-                container_file_path = os.path.dirname(f)
-                # 容器中的文件名字
-                container_file_name = os.path.basename(f)
-                # 文件所在 Host 上目录的完全路径
-                full_path = host_dir_path + container_file_path
-                # 文件所在 Host 上的完全路径
-                full_file_path = os.path.join(full_path, container_file_name)
-
-                # 如果 full_path 不存在, 就创建
-                if not os.path.exists(full_path):
-                    os.makedirs(full_path)
-
+                # 文件在 Docker 主机上共享存储的路径
+                file_path = os.path.dirname(f)
+                # 如果 file_path 不存在, 就创建
+                if not os.path.exists(file_path):
+                    os.makedirs(file_path)
                 # 如果文件不存在, 写入默认内容
-                if not os.path.exists(full_file_path):
-                    fo = open(full_file_path, 'w')
+                if not os.path.exists(f):
+                    fo = open(f, 'w')
                     fo.writelines(files[f].encode('utf-8'))
                     fo.close()
                     files_content[f] = files[f]
@@ -691,14 +670,7 @@ class Container_Manager(object):
             Return: True or False
         """
         try:
-            s, m, r = self._inspect_container(msg['id'], msg['cid'])
-            if s == 0:
-                container_pid = r['State']['Pid']
-            else:
-                return (s, m, r)
-
-            base_path = "/proc/%s/root" % container_pid
-            p = subprocess.Popen(["file %s" % (base_path + filename)],
+            p = subprocess.Popen(["file %s" % filename],
                                  stdout=subprocess.PIPE,
                                  shell=True)
             data = p.stdout.read()
@@ -741,11 +713,17 @@ class Container_Manager(object):
         """通过 Docker exec api 获取容器中文件内容"""
 
         try:
-            exec_id = self.connection.exec_create(
-                container=c_id,
-                cmd='cat %s' % filename
-            )['Id']
-            content = self.connection.exec_start(exec_id=exec_id)
+            try:
+                file_object = open(filename)
+                content = file_object.read()
+            finally:
+                file_object.close()
+
+            # exec_id = self.connection.exec_create(
+            #     container=c_id,
+            #     cmd='cat %s' % filename
+            # )['Id']
+            # content = self.connection.exec_start(exec_id=exec_id)
             try:
                 simplejson.dumps(content)
             except:
@@ -761,6 +739,7 @@ class Container_Manager(object):
         bash_command = []
         nginx_process = []
         host_dir_path = os.path.join(self.container_path, new_msg['cid'])
+        f = '/storage/learn/' + f.split('/learn/', 1)[1]
         if '.' in f:
             f_type = f.split('.')[-1]
             if f_type == 'html' or f_type == 'css' or \
