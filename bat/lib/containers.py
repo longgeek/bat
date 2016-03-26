@@ -146,6 +146,11 @@ class Container_Manager(object):
         3. 获取 80、8000、9000 所对于的外部端口
         """
 
+        # 在存储中创建用户目录
+        if not os.path.exists('/storage/user_data/%s' % msg['username']):
+            os.makedirs('/storage/user_data/%s/me' % msg['username'])
+            os.makedirs('/storage/user_data/%s/learn' % msg['username'])
+
         if not msg['cid']:
             container_id = c_id
         if not c_id:
@@ -831,6 +836,49 @@ class Container_Manager(object):
                     new_dirs[d] = "does not exist"
             msg["dirs"] = new_dirs
             return (0, "", msg)
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
+    def host_exec_container(self, msg):
+        """在 Docker 主机上执行命令"""
+
+        try:
+            is_error = {}
+            for command in msg['commands']:
+                p = subprocess.Popen([command],
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     shell=True)
+                out, err = p.communicate()
+                if err:
+                    is_error = {'error': err, 'id': msg['id']}
+                    break
+            if not is_error:
+                return (0, '', msg)
+            return (1, is_error, '')
+        except Exception, e:
+            return (1, {'error': str(e), 'id': msg['id']}, '')
+
+    def host_fdcheck_container(self, msg):
+        """在 Docker 主机上检测文件、目录是否创建"""
+
+        try:
+            fds = {}
+            for fd in msg['fds']:
+                if fd['type'] == 'file':
+                    if os.path.exists(fd['name']) and \
+                       os.path.isfile(fd['name']):
+                        fds[fd['name']] = True
+                    else:
+                        fds[fd['name']] = False
+                else:
+                    if os.path.exists(fd['name']) and \
+                       os.path.isdir(fd['name']):
+                        fds[fd['name']] = True
+                    else:
+                        fds[fd['name']] = False
+            msg['fds'] = fds
+            return (0, '', msg)
         except Exception, e:
             return (1, {'error': str(e), 'id': msg['id']}, '')
 
