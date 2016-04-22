@@ -101,6 +101,7 @@ The Django Practice topic is heavily dependent on it:
     virtualenv /storage/.system/.virtualenv/django/django-1.8.2
     source /storage/.system/.virtualenv/django/django-1.8.2/bin/activate
     pip install "django==1.8.2"
+    pip install ipdb
     deactivate
     sed -i "s/'django.middleware.clickjacking.XFrameOptionsMiddleware'/# 'django.middleware.clickjacking.XFrameOptionsMiddleware'/g" /storage/.system/.virtualenv/django/django-1.8.2/lib/python2.7/site-packages/django/conf/project_template/project_name/settings.py
 
@@ -108,6 +109,7 @@ The Django Practice topic is heavily dependent on it:
     virtualenv /storage/.system/.virtualenv/django/django-1.8.4
     source /storage/.system/.virtualenv/django/django-1.8.4/bin/activate
     pip install "django==1.8.4"
+    pip install ipdb
     deactivate
     sed -i "s/'django.middleware.clickjacking.XFrameOptionsMiddleware'/# 'django.middleware.clickjacking.XFrameOptionsMiddleware'/g" /storage/.system/.virtualenv/django/django-1.8.4/lib/python2.7/site-packages/django/conf/project_template/project_name/settings.py
 
