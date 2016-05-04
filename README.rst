@@ -43,7 +43,7 @@ If necessary, please update the system as well as the kernel:
     apt-get dist-upgrade
 
 Install the docker and other dependent software package:
-    apt-get install lxc-docker-1.4.0 python-pip git
+    apt-get install lxc-docker-1.6.2 python-pip git
     apt-get install python-dev libffi-dev libssl-dev libxml2-dev libxslt1-dev
 
 Dependent on the installation of the groceries:
