@@ -615,7 +615,10 @@ class Container_Manager(object):
 
                 # 写入数据到文件中
                 fo = open(f, 'w')
-                fo.writelines(files[f].encode('utf-8'))
+                if files[f]:
+                    fo.writelines(files[f].encode('utf-8'))
+                else:
+                    fo.write('')
                 fo.close()
 
                 s1, m1, r1 = self._link_file_to_nginx(f, new_msg)
@@ -645,7 +648,11 @@ class Container_Manager(object):
                 # 如果文件不存在, 写入默认内容
                 if not os.path.exists(f):
                     fo = open(f, 'w')
-                    fo.writelines(files[f].encode('utf-8'))
+                    if (files[f]):
+                        fo.writelines(files[f].encode('utf-8'))
+                    else:
+                        fo.write('')
+
                     fo.close()
                     files_content[f] = files[f]
                 else:
