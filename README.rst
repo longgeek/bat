@@ -93,6 +93,20 @@ Use virtualenv build butterfly in the /storage/.system/.console/local/butterfly:
     python setup.py develop
     deactivate
 
+Django database synchronization needs to enter the project directory,
+which adds a .bash directory, used to store a number of scripts.
+such as: switch directory
+
+    mkdir /storage/.system/.bash/
+    touch switchdir.sh
+    #!/bin/bash
+
+    export VIRTUAL_ENV=/storage/.system/.virtualenv/django/django-1.8.4
+    export PATH=/storage/.system/.virtualenv/django/django-1.8.4/bin:$PATH
+    [ -e $1 ] && cd $1
+    bash
+
+
 Sure Docker Host the "/storage/.virtualenv/" exist.
 The Django Practice topic is heavily dependent on it:
 
